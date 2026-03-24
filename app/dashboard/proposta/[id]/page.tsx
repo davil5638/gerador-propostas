@@ -84,6 +84,7 @@ export default async function PropostaDetailPage({ params }: Props) {
           proposalTitle={proposal.title}
           proposalData={proposal}
           clientPhone={proposal.client_phone}
+          currentStatus={proposal.status}
         />
 
         {/* Stats */}

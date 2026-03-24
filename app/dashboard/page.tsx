@@ -34,6 +34,8 @@ export default async function DashboardPage() {
     visualizada: { label: 'Visualizada', color: 'bg-green-50 text-green-700', icon: <Eye size={12} /> },
     aceita: { label: 'Aceita', color: 'bg-emerald-50 text-emerald-700', icon: <CheckCircle size={12} /> },
     recusada: { label: 'Recusada', color: 'bg-red-50 text-red-700', icon: <XCircle size={12} /> },
+    em_negociacao: { label: 'Em negociação', color: 'bg-amber-50 text-amber-700', icon: <Clock size={12} /> },
+    perdida: { label: 'Perdida', color: 'bg-red-50 text-red-700', icon: <XCircle size={12} /> },
   }
 
   return (

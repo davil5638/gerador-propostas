@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Pencil, Copy, Trash2, MessageCircle } from 'lucide-react'
+import { Pencil, Copy, Trash2, MessageCircle, Tag } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { generateSlug } from '@/lib/utils'
 
@@ -14,12 +14,23 @@ interface Props {
   proposalTitle: string
   proposalData: Record<string, unknown>
   clientPhone?: string | null
+  currentStatus?: string
 }
 
-export default function ActionButtons({ proposalId, proposalUrl, clientName, proposalTitle, proposalData, clientPhone }: Props) {
+const statusOptions = [
+  { value: 'ativa', label: 'Ativa', color: 'text-blue-600' },
+  { value: 'visualizada', label: 'Visualizada', color: 'text-green-600' },
+  { value: 'em_negociacao', label: 'Em negociação', color: 'text-amber-600' },
+  { value: 'aceita', label: 'Aceita', color: 'text-emerald-600' },
+  { value: 'perdida', label: 'Perdida', color: 'text-red-600' },
+]
+
+export default function ActionButtons({ proposalId, proposalUrl, clientName, proposalTitle, proposalData, clientPhone, currentStatus }: Props) {
   const router = useRouter()
   const [deleting, setDeleting] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
+  const [status, setStatus] = useState(currentStatus || 'ativa')
+  const [savingStatus, setSavingStatus] = useState(false)
 
   const whatsappMsg = encodeURIComponent(
     `Olá ${clientName}! Preparei uma proposta especialmente para você. Acesse pelo link: ${proposalUrl}`
@@ -28,6 +39,15 @@ export default function ActionButtons({ proposalId, proposalUrl, clientName, pro
   const whatsappUrl = phone
     ? `https://wa.me/${phone}?text=${whatsappMsg}`
     : `https://api.whatsapp.com/send?text=${whatsappMsg}`
+
+  async function handleStatusChange(newStatus: string) {
+    setSavingStatus(true)
+    const supabase = createClient()
+    await supabase.from('proposals').update({ status: newStatus }).eq('id', proposalId)
+    setStatus(newStatus)
+    setSavingStatus(false)
+    router.refresh()
+  }
 
   async function handleDuplicate() {
     setDuplicating(true)
@@ -74,6 +94,23 @@ export default function ActionButtons({ proposalId, proposalUrl, clientName, pro
         <MessageCircle size={16} />
         Enviar proposta pelo WhatsApp
       </a>
+
+      {/* Status manual */}
+      <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
+        <Tag size={15} className="text-gray-400 flex-shrink-0" />
+        <span className="text-sm text-gray-500 flex-shrink-0">Status:</span>
+        <select
+          value={status}
+          onChange={e => handleStatusChange(e.target.value)}
+          disabled={savingStatus}
+          className="flex-1 text-sm font-medium bg-transparent focus:outline-none cursor-pointer disabled:opacity-50"
+        >
+          {statusOptions.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        {savingStatus && <span className="text-xs text-gray-400">Salvando...</span>}
+      </div>
 
       {/* Ações secundárias */}
       <div className="grid grid-cols-3 gap-3">

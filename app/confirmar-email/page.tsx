@@ -38,15 +38,17 @@ export default async function ConfirmarEmailPage({ searchParams }: Props) {
             </p>
           )}
 
-          <p className="text-gray-500 text-sm leading-relaxed mb-8">
+          <p className="text-gray-500 text-sm leading-relaxed mb-6">
             Clique no link que enviamos para ativar sua conta e começar a usar o PropostaTrack.
+            O email é enviado automaticamente pelo sistema de autenticação.
           </p>
 
           {/* Dicas */}
-          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-left mb-6">
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-left mb-4">
             <p className="text-amber-800 text-sm font-semibold mb-2">Não recebeu o email?</p>
             <ul className="text-amber-700 text-sm space-y-1">
               <li>• Verifique a caixa de spam ou lixo eletrônico</li>
+              <li>• O remetente será <strong>noreply@mail.app.supabase.io</strong></li>
               <li>• Aguarde até 2 minutos</li>
               <li>• Certifique-se que o email está correto</li>
             </ul>

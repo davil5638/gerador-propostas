@@ -46,6 +46,7 @@ export default function PropostaView({ proposal }: Props) {
   validadeDate.setDate(validadeDate.getDate() + proposal.validity_days)
   const isExpired = new Date() > validadeDate
   const validadeStr = validadeDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+  const daysRemaining = Math.ceil((validadeDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
 
   useEffect(() => {
     if (!isExpired) {
@@ -105,6 +106,15 @@ export default function PropostaView({ proposal }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Contador regressivo */}
+      {!isExpired && daysRemaining <= 3 && (
+        <div className={`w-full text-center py-3 px-4 text-sm font-semibold ${daysRemaining <= 1 ? 'bg-red-500 text-white' : 'bg-amber-400 text-amber-900'}`}>
+          {daysRemaining <= 0
+            ? '⚠️ Esta proposta expira hoje!'
+            : `⏳ Esta proposta expira em ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}! Não perca esta oportunidade.`}
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-blue-600 text-white py-12 px-6">
         <div className="max-w-2xl mx-auto">

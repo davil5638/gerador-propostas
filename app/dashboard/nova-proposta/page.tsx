@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Trash2, FileText, Lock, ImageIcon } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, FileText, Lock, ImageIcon, Eye, X, CheckCircle, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { generateSlug } from '@/lib/utils'
 import { canCreateProposal } from '@/lib/plan'
+import { templates } from '@/lib/templates'
 
 const nichos = [
   { value: 'design', label: 'Design Gráfico / UI' },
@@ -18,15 +19,14 @@ const nichos = [
   { value: 'outro', label: 'Outro (especificar)' },
 ]
 
-interface Servico {
-  nome: string
-  descricao: string
-}
+interface Servico { nome: string; descricao: string }
 
 export default function NovaProposta() {
   const router = useRouter()
+  const [step, setStep] = useState<'template' | 'form'>('template')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showPreview, setShowPreview] = useState(false)
   const [planLimit, setPlanLimit] = useState<{ allowed: boolean; count: number; limit: number } | null>(null)
 
   useEffect(() => {
@@ -54,18 +54,20 @@ export default function NovaProposta() {
   const [precoDescricao, setPrecoDescricao] = useState('')
   const [validadeDias, setValidadeDias] = useState('15')
 
-  function addServico() {
-    setServicos([...servicos, { nome: '', descricao: '' }])
+  function applyTemplate(tpl: typeof templates[0]) {
+    setTitulo(tpl.titulo)
+    setNicho(tpl.nicho)
+    setIntro(tpl.intro)
+    setServicos(tpl.servicos)
+    setPrecoDescricao(tpl.precoDescricao)
+    setValidadeDias(tpl.validadeDias)
+    setStep('form')
   }
 
-  function removeServico(index: number) {
-    setServicos(servicos.filter((_, i) => i !== index))
-  }
-
+  function addServico() { setServicos([...servicos, { nome: '', descricao: '' }]) }
+  function removeServico(index: number) { setServicos(servicos.filter((_, i) => i !== index)) }
   function updateServico(index: number, field: keyof Servico, value: string) {
-    const updated = [...servicos]
-    updated[index][field] = value
-    setServicos(updated)
+    const updated = [...servicos]; updated[index][field] = value; setServicos(updated)
   }
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -89,14 +91,9 @@ export default function NovaProposta() {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      router.push('/login')
-      return
-    }
+    if (!user) { router.push('/login'); return }
 
     const { allowed } = await canCreateProposal(user.id)
     if (!allowed) {
@@ -106,7 +103,6 @@ export default function NovaProposta() {
     }
 
     const slug = generateSlug()
-
     const { data: newProposal, error } = await supabase.from('proposals').insert({
       user_id: user.id,
       slug,
@@ -128,17 +124,125 @@ export default function NovaProposta() {
       setLoading(false)
       return
     }
-
     router.push(`/dashboard/proposta/${newProposal.id}`)
   }
 
+  // Preview component (simplified inline render)
+  const previewPrice = preco ? parseFloat(preco.replace(',', '.')) : null
+  const previewValidadeDate = new Date()
+  previewValidadeDate.setDate(previewValidadeDate.getDate() + parseInt(validadeDias))
+  const previewValidadeStr = previewValidadeDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+
+  // ---- STEP: TEMPLATE SELECTION ----
+  if (step === 'template') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white border-b border-gray-100 px-6 py-4">
+          <div className="max-w-3xl mx-auto flex items-center gap-4">
+            <Link href="/dashboard" className="text-gray-500 hover:text-gray-900">
+              <ArrowLeft size={20} />
+            </Link>
+            <div className="flex items-center gap-2">
+              <FileText className="text-blue-600" size={20} />
+              <span className="font-semibold text-gray-900">Nova Proposta</span>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-3xl mx-auto px-6 py-10">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Escolha um template</h1>
+            <p className="text-gray-500 text-sm">Comece mais rápido com um modelo pronto ou crie do zero</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+            {templates.map(tpl => (
+              <button
+                key={tpl.id}
+                onClick={() => applyTemplate(tpl)}
+                className="bg-white border border-gray-200 rounded-2xl p-5 text-left hover:border-blue-400 hover:shadow-md transition group"
+              >
+                <span className="text-3xl mb-3 block">{tpl.icon}</span>
+                <p className="font-semibold text-gray-900 text-sm group-hover:text-blue-600">{tpl.label}</p>
+                <p className="text-xs text-gray-400 mt-1 line-clamp-2">{tpl.titulo}</p>
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setStep('form')}
+            className="w-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 py-4 rounded-2xl font-medium text-sm transition"
+          >
+            Começar do zero →
+          </button>
+        </main>
+      </div>
+    )
+  }
+
+  // ---- STEP: FORM ----
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <p className="font-bold text-gray-900">Preview da Proposta</p>
+              <button onClick={() => setShowPreview(false)} className="text-gray-400 hover:text-gray-700">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="bg-blue-600 text-white py-10 px-6">
+              {logoUrl && <img src={logoUrl} alt="Logo" className="h-10 object-contain mb-5 rounded" />}
+              <p className="text-sm opacity-70 mb-2">{nicho === 'outro' ? nichoCustom || 'Outro' : nichos.find(n => n.value === nicho)?.label}</p>
+              <h1 className="text-2xl font-bold mb-2">{titulo || 'Título da proposta'}</h1>
+              <p className="opacity-80 text-sm">Preparado especialmente para <strong>{clienteNome || 'Cliente'}</strong></p>
+            </div>
+            <div className="p-6 space-y-4">
+              {intro && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="font-bold text-gray-900 mb-2 text-sm">Apresentação</p>
+                  <p className="text-gray-600 text-sm whitespace-pre-wrap">{intro}</p>
+                </div>
+              )}
+              {servicos.filter(s => s.nome.trim()).length > 0 && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="font-bold text-gray-900 mb-3 text-sm">O que está incluído</p>
+                  <div className="space-y-2">
+                    {servicos.filter(s => s.nome.trim()).map((s, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <CheckCircle size={14} className="text-green-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{s.nome}</p>
+                          {s.descricao && <p className="text-xs text-gray-500">{s.descricao}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {previewPrice && (
+                <div className="bg-blue-600 rounded-xl p-4 text-white">
+                  <p className="font-bold mb-2 text-sm">Investimento</p>
+                  <p className="text-3xl font-extrabold">R$ {previewPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  {precoDescricao && <p className="text-blue-100 text-xs mt-1">{precoDescricao}</p>}
+                </div>
+              )}
+              <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-3">
+                <Clock size={16} className="text-amber-500" />
+                <p className="text-sm text-gray-600">Válida até <strong>{previewValidadeStr}</strong></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="bg-white border-b border-gray-100 px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center gap-4">
-          <Link href="/dashboard" className="text-gray-500 hover:text-gray-900">
+          <button onClick={() => setStep('template')} className="text-gray-500 hover:text-gray-900">
             <ArrowLeft size={20} />
-          </Link>
+          </button>
           <div className="flex items-center gap-2">
             <FileText className="text-blue-600" size={20} />
             <span className="font-semibold text-gray-900">Nova Proposta</span>
@@ -147,7 +251,6 @@ export default function NovaProposta() {
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-10">
-        {/* Banner de limite do plano */}
         {planLimit && (
           <div className={`mb-6 px-5 py-4 rounded-2xl flex items-center justify-between ${planLimit.allowed ? 'bg-blue-50 border border-blue-100' : 'bg-red-50 border border-red-100'}`}>
             <div className="flex items-center gap-3">
@@ -159,7 +262,7 @@ export default function NovaProposta() {
               </p>
             </div>
             {!planLimit.allowed && (
-              <Link href="/#precos" className="text-xs font-bold text-red-600 border border-red-300 px-3 py-1.5 rounded-lg hover:bg-red-100 transition whitespace-nowrap">
+              <Link href="/dashboard/upgrade" className="text-xs font-bold text-red-600 border border-red-300 px-3 py-1.5 rounded-lg hover:bg-red-100 transition whitespace-nowrap">
                 Fazer upgrade →
               </Link>
             )}
@@ -199,75 +302,46 @@ export default function NovaProposta() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Título da proposta</label>
-                <input
-                  type="text"
-                  required
-                  value={titulo}
-                  onChange={(e) => setTitulo(e.target.value)}
+                <input type="text" required value={titulo} onChange={e => setTitulo(e.target.value)}
                   placeholder="Ex: Criação de Site para Empresa XYZ"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Nicho / Área</label>
-                <select
-                  value={nicho}
-                  onChange={(e) => setNicho(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {nichos.map(n => (
-                    <option key={n.value} value={n.value}>{n.label}</option>
-                  ))}
+                <select value={nicho} onChange={e => setNicho(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  {nichos.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
                 </select>
                 {nicho === 'outro' && (
-                  <input
-                    type="text"
-                    value={nichoCustom}
-                    onChange={(e) => setNichoCustom(e.target.value)}
-                    placeholder="Ex: Fotografia, Arquitetura, Contabilidade..."
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2"
-                  />
+                  <input type="text" value={nichoCustom} onChange={e => setNichoCustom(e.target.value)}
+                    placeholder="Ex: Fotografia, Arquitetura..."
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2" />
                 )}
               </div>
             </div>
           </div>
 
-          {/* Informações do cliente */}
+          {/* Dados do cliente */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <h2 className="font-bold text-gray-900 mb-5">Dados do Cliente</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Nome do cliente / empresa</label>
-                <input
-                  type="text"
-                  required
-                  value={clienteNome}
-                  onChange={(e) => setClienteNome(e.target.value)}
+                <input type="text" required value={clienteNome} onChange={e => setClienteNome(e.target.value)}
                   placeholder="Ex: João Silva ou Empresa ABC"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Email do cliente <span className="text-gray-400 font-normal">(opcional)</span></label>
-                <input
-                  type="email"
-                  value={clienteEmail}
-                  onChange={(e) => setClienteEmail(e.target.value)}
+                <input type="email" value={clienteEmail} onChange={e => setClienteEmail(e.target.value)}
                   placeholder="cliente@email.com"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  WhatsApp do cliente <span className="text-gray-400 font-normal">(opcional)</span>
-                </label>
-                <input
-                  type="tel"
-                  value={clienteTelefone}
-                  onChange={(e) => setClienteTelefone(e.target.value)}
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">WhatsApp do cliente <span className="text-gray-400 font-normal">(opcional)</span></label>
+                <input type="tel" value={clienteTelefone} onChange={e => setClienteTelefone(e.target.value)}
                   placeholder="Ex: 5511999999999"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 <p className="text-xs text-gray-400 mt-1">Código do país + DDD + número. Ex: 5511999999999</p>
               </div>
             </div>
@@ -276,26 +350,17 @@ export default function NovaProposta() {
           {/* Introdução */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <h2 className="font-bold text-gray-900 mb-5">Mensagem de Abertura</h2>
-            <textarea
-              value={intro}
-              onChange={(e) => setIntro(e.target.value)}
-              rows={4}
-              placeholder="Ex: Olá João, é um prazer apresentar esta proposta para o desenvolvimento do seu novo site..."
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            />
+            <textarea value={intro} onChange={e => setIntro(e.target.value)} rows={4}
+              placeholder="Ex: Olá João, é um prazer apresentar esta proposta..."
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
 
           {/* Serviços */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-bold text-gray-900">Serviços Incluídos</h2>
-              <button
-                type="button"
-                onClick={addServico}
-                className="flex items-center gap-1.5 text-sm text-blue-600 font-medium hover:text-blue-700"
-              >
-                <Plus size={14} />
-                Adicionar serviço
+              <button type="button" onClick={addServico} className="flex items-center gap-1.5 text-sm text-blue-600 font-medium hover:text-blue-700">
+                <Plus size={14} /> Adicionar serviço
               </button>
             </div>
             <div className="space-y-4">
@@ -303,27 +368,15 @@ export default function NovaProposta() {
                 <div key={index} className="border border-gray-100 rounded-xl p-4 bg-gray-50">
                   <div className="flex items-start gap-3">
                     <div className="flex-1 space-y-2">
-                      <input
-                        type="text"
-                        value={servico.nome}
-                        onChange={(e) => updateServico(index, 'nome', e.target.value)}
+                      <input type="text" value={servico.nome} onChange={e => updateServico(index, 'nome', e.target.value)}
                         placeholder="Nome do serviço (ex: Desenvolvimento Frontend)"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <input
-                        type="text"
-                        value={servico.descricao}
-                        onChange={(e) => updateServico(index, 'descricao', e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <input type="text" value={servico.descricao} onChange={e => updateServico(index, 'descricao', e.target.value)}
                         placeholder="Descrição breve (ex: 5 páginas responsivas com React)"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
                     {servicos.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeServico(index)}
-                        className="text-gray-400 hover:text-red-500 mt-1"
-                      >
+                      <button type="button" onClick={() => removeServico(index)} className="text-gray-400 hover:text-red-500 mt-1">
                         <Trash2 size={16} />
                       </button>
                     )}
@@ -339,31 +392,20 @@ export default function NovaProposta() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Valor total (R$)</label>
-                <input
-                  type="text"
-                  value={preco}
-                  onChange={(e) => setPreco(e.target.value)}
+                <input type="text" value={preco} onChange={e => setPreco(e.target.value)}
                   placeholder="Ex: 2500,00"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Condições de pagamento <span className="text-gray-400 font-normal">(opcional)</span></label>
-                <input
-                  type="text"
-                  value={precoDescricao}
-                  onChange={(e) => setPrecoDescricao(e.target.value)}
+                <input type="text" value={precoDescricao} onChange={e => setPrecoDescricao(e.target.value)}
                   placeholder="Ex: 50% na aprovação + 50% na entrega"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Validade da proposta (dias)</label>
-                <select
-                  value={validadeDias}
-                  onChange={(e) => setValidadeDias(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                <select value={validadeDias} onChange={e => setValidadeDias(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="1">1 dia</option>
                   <option value="7">7 dias</option>
                   <option value="15">15 dias</option>
@@ -373,17 +415,18 @@ export default function NovaProposta() {
             </div>
           </div>
 
-          {error && (
-            <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{error}</div>
-          )}
+          {error && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{error}</div>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-4 rounded-xl font-semibold text-lg hover:bg-blue-700 transition disabled:opacity-60"
-          >
-            {loading ? 'Criando proposta...' : 'Criar proposta e gerar link →'}
-          </button>
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setShowPreview(true)}
+              className="flex items-center gap-2 border border-gray-200 bg-white text-gray-700 px-5 py-4 rounded-xl font-semibold text-sm hover:bg-gray-50 transition">
+              <Eye size={16} /> Preview
+            </button>
+            <button type="submit" disabled={loading}
+              className="flex-1 bg-blue-600 text-white py-4 rounded-xl font-semibold text-lg hover:bg-blue-700 transition disabled:opacity-60">
+              {loading ? 'Criando proposta...' : 'Criar proposta e gerar link →'}
+            </button>
+          </div>
         </form>
       </main>
     </div>

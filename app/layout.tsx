@@ -13,8 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PropostaTrack – Crie e rastreie propostas comerciais",
+  title: "PropostaTrack – Pare de enviar PDF que ninguém responde",
   description: "Crie propostas profissionais e saiba exatamente quando seu cliente abrir. Notificação em tempo real.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

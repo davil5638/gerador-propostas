@@ -8,6 +8,8 @@ export async function getMonthlyProposalCount(userId: string): Promise<number> {
   startOfMonth.setDate(1)
   startOfMonth.setHours(0, 0, 0, 0)
 
+  // Conta TODAS as propostas criadas no mês, incluindo deletadas
+  // Isso evita que o usuário burle o limite deletando e recriando
   const { count } = await supabase
     .from('proposals')
     .select('*', { count: 'exact', head: true })

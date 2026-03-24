@@ -84,6 +84,7 @@ export default async function PropostaDetailPage({ params }: Props) {
           proposalTitle={proposal.title}
           proposalData={proposal}
           clientPhone={proposal.client_phone}
+          clientEmail={proposal.client_email}
         />
 
         {/* Stats */}

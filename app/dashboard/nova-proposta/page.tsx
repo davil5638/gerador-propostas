@@ -15,7 +15,7 @@ const nichos = [
   { value: 'consultoria', label: 'Consultoria' },
   { value: 'video', label: 'Vídeo / Edição' },
   { value: 'copywriting', label: 'Copywriting / Redação' },
-  { value: 'geral', label: 'Outro' },
+  { value: 'outro', label: 'Outro (especificar)' },
 ]
 
 interface Servico {
@@ -46,7 +46,8 @@ export default function NovaProposta() {
   const [clienteNome, setClienteNome] = useState('')
   const [clienteEmail, setClienteEmail] = useState('')
   const [clienteTelefone, setClienteTelefone] = useState('')
-  const [nicho, setNicho] = useState('geral')
+  const [nicho, setNicho] = useState('desenvolvimento')
+  const [nichoCustom, setNichoCustom] = useState('')
   const [intro, setIntro] = useState('')
   const [servicos, setServicos] = useState<Servico[]>([{ nome: '', descricao: '' }])
   const [preco, setPreco] = useState('')
@@ -106,29 +107,29 @@ export default function NovaProposta() {
 
     const slug = generateSlug()
 
-    const { error } = await supabase.from('proposals').insert({
+    const { data: newProposal, error } = await supabase.from('proposals').insert({
       user_id: user.id,
       slug,
       title: titulo,
       client_name: clienteNome,
       client_email: clienteEmail,
       client_phone: clienteTelefone || null,
-      nicho,
+      nicho: nicho === 'outro' ? (nichoCustom.trim() || 'Outro') : nicho,
       intro,
       services: servicos.filter(s => s.nome.trim()),
       price: preco ? parseFloat(preco.replace(',', '.')) : null,
       price_description: precoDescricao,
       validity_days: parseInt(validadeDias),
       logo_url: logoUrl || null,
-    })
+    }).select().single()
 
-    if (error) {
+    if (error || !newProposal) {
       setError('Erro ao criar proposta. Tente novamente.')
       setLoading(false)
       return
     }
 
-    router.push('/dashboard')
+    router.push(`/dashboard/proposta/${newProposal.id}`)
   }
 
   return (
@@ -218,6 +219,15 @@ export default function NovaProposta() {
                     <option key={n.value} value={n.value}>{n.label}</option>
                   ))}
                 </select>
+                {nicho === 'outro' && (
+                  <input
+                    type="text"
+                    value={nichoCustom}
+                    onChange={(e) => setNichoCustom(e.target.value)}
+                    placeholder="Ex: Fotografia, Arquitetura, Contabilidade..."
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2"
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -354,6 +364,7 @@ export default function NovaProposta() {
                   onChange={(e) => setValidadeDias(e.target.value)}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
+                  <option value="1">1 dia</option>
                   <option value="7">7 dias</option>
                   <option value="15">15 dias</option>
                   <option value="30">30 dias</option>

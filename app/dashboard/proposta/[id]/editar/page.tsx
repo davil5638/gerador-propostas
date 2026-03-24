@@ -39,7 +39,9 @@ export default function EditarProposta() {
   useEffect(() => {
     async function load() {
       const supabase = createClient()
-      const { data } = await supabase.from('proposals').select('*').eq('id', id).single()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/login'); return }
+      const { data } = await supabase.from('proposals').select('*').eq('id', id).eq('user_id', user.id).single()
       if (!data) { router.push('/dashboard'); return }
       setTitulo(data.title)
       setClienteNome(data.client_name)
@@ -66,6 +68,8 @@ export default function EditarProposta() {
     setLoading(true)
     setError('')
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/login'); return }
     const { error } = await supabase.from('proposals').update({
       title: titulo,
       client_name: clienteNome,
@@ -77,7 +81,7 @@ export default function EditarProposta() {
       price_description: precoDescricao,
       validity_days: parseInt(validadeDias),
       updated_at: new Date().toISOString(),
-    }).eq('id', id)
+    }).eq('id', id).eq('user_id', user.id)
 
     if (error) { setError('Erro ao salvar.'); setLoading(false); return }
     router.push(`/dashboard/proposta/${id}`)

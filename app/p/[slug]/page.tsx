@@ -14,16 +14,10 @@ export default async function PropostaPublicaPage({ params }: Props) {
     .from('proposals')
     .select('*')
     .eq('slug', slug)
+    .is('deleted_at', null)
     .single()
 
   if (!proposal) notFound()
-
-  // Buscar email do dono para notificação
-  const { data: ownerData } = await supabase
-    .from('proposals')
-    .select('user_id')
-    .eq('slug', slug)
-    .single()
 
   return <PropostaView proposal={proposal} />
 }

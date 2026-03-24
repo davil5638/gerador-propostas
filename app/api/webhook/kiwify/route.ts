@@ -11,6 +11,12 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
   try {
+    // Validar token secreto do webhook
+    const token = req.nextUrl.searchParams.get('token')
+    if (!process.env.KIWIFY_WEBHOOK_SECRET || token !== process.env.KIWIFY_WEBHOOK_SECRET) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await req.json()
 
     const orderStatus: string = body?.order_status ?? ''

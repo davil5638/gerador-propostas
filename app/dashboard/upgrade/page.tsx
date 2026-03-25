@@ -2,8 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { CheckCircle, ArrowLeft, Zap, Star } from 'lucide-react'
 
-// Substitua esta URL pelo link real do seu produto no Kiwify
-const KIWIFY_URL = process.env.NEXT_PUBLIC_KIWIFY_URL || 'https://kiwify.com.br/seu-produto'
+const KIWIFY_URL = 'https://pay.kiwify.com.br/VnCCIqa'
 
 export default function UpgradePage() {
   return (

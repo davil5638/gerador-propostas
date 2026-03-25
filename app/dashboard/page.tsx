@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
 import Image from 'next/image'
 import { Plus, FileText, Eye, Clock, CheckCircle, XCircle, Zap } from 'lucide-react'
+import LogoutButton from '@/components/LogoutButton'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -46,9 +47,7 @@ export default async function DashboardPage() {
           <Image src="/logo.png" alt="PropostaTrack" width={280} height={80} style={{ height: "56px", width: "auto" }} />
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500 hidden sm:block">Olá, {nome}!</span>
-            <form action="/api/auth/logout" method="POST">
-              <button className="text-xs sm:text-sm text-gray-500 hover:text-gray-900 border border-gray-200 px-3 py-1.5 rounded-lg">Sair</button>
-            </form>
+            <LogoutButton />
           </div>
         </div>
       </header>

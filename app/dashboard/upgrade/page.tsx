@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { CheckCircle, ArrowLeft, Zap, Star } from 'lucide-react'
 
-const KIWIFY_URL = 'https://pay.kiwify.com.br/vOXJ31a'
+const KIWIFY_URL = 'https://pay.kiwify.com.br/xYKGneP'
 
 export default function UpgradePage() {
   return (
